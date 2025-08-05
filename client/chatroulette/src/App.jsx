@@ -34,7 +34,9 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated || !sessionId) return;
 
-    const newSocket = io('http://localhost:3001');
+    // Use environment variable or fallback to localhost for development
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+    const newSocket = io(serverUrl);
     setSocket(newSocket);
 
     newSocket.on('connect', () => {

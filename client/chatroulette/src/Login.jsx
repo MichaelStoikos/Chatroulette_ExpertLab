@@ -29,7 +29,9 @@ function Login({ onLogin }) {
         ? { email: formData.email, password: formData.password }
         : formData;
 
-      const response = await fetch(`http://localhost:3001${endpoint}`, {
+      // Use environment variable or fallback to localhost for development
+      const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+      const response = await fetch(`${serverUrl}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
