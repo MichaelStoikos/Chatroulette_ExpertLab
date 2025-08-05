@@ -31,6 +31,32 @@ function App() {
     }
   }, []);
 
+  // Initialize local video when component mounts
+  useEffect(() => {
+    const initializeLocalVideo = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          console.log('Local video initialized:', stream);
+        }
+      } catch (error) {
+        console.error('Error initializing local video:', error);
+      }
+    };
+
+    if (isAuthenticated) {
+      initializeLocalVideo();
+    }
+
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (!isAuthenticated || !sessionId) return;
 
@@ -123,41 +149,67 @@ function App() {
   const initializeWebRTC = async (sock = socket, room = roomId) => {
     if (peerConnectionRef.current) return;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localStreamRef.current = stream;
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    });
-    peerConnectionRef.current = pc;
-
-    // ✅ Add tracks to peer connection
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
-    pc.onicecandidate = (event) => {
-      console.log('ICE candidate:', event.candidate);
-      if (event.candidate) {
-        sock.emit('iceCandidate', { roomId: room, candidate: event.candidate });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localStreamRef.current = stream;
+      
+      // Set local video stream immediately
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log('Local stream set to video element:', stream);
       }
-    };
-    
-    pc.ontrack = (event) => {
-      console.log('Received remote track:', event.streams);
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-        remoteVideoRef.current.play().catch(e => console.warn('Autoplay failed:', e));
-      }
-    };
-    
-    pc.onconnectionstatechange = () => {
-      console.log('PeerConnection state:', pc.connectionState);
-    };
 
-    pc.oniceconnectionstatechange = () => {
-      console.log('ICE state:', pc.iceConnectionState);
-    };
-    
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+      peerConnectionRef.current = pc;
+
+      // ✅ Add tracks to peer connection
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      pc.onicecandidate = (event) => {
+        console.log('ICE candidate:', event.candidate);
+        if (event.candidate) {
+          sock.emit('iceCandidate', { roomId: room, candidate: event.candidate });
+        }
+      };
+      
+      pc.ontrack = (event) => {
+        console.log('Received remote track:', event.streams);
+        console.log('Remote stream:', event.streams[0]);
+        console.log('Remote video element:', remoteVideoRef.current);
+        
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          console.log('Remote stream set to video element');
+          
+          // Force play the video
+          remoteVideoRef.current.play()
+            .then(() => console.log('Remote video playing successfully'))
+            .catch(e => {
+              console.warn('Autoplay failed for remote video:', e);
+              // Try muted play as fallback
+              remoteVideoRef.current.muted = true;
+              remoteVideoRef.current.play()
+                .then(() => console.log('Remote video playing muted'))
+                .catch(e2 => console.error('Muted play also failed:', e2));
+            });
+        } else {
+          console.error('Remote video element or stream not available');
+        }
+      };
+      
+      pc.onconnectionstatechange = () => {
+        console.log('PeerConnection state:', pc.connectionState);
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('ICE state:', pc.iceConnectionState);
+      };
+      
+    } catch (error) {
+      console.error('Error initializing WebRTC:', error);
+    }
   };
 
   const cleanupWebRTC = () => {
@@ -240,11 +292,23 @@ function App() {
         {isInCall && (
           <div className="video-container">
             <div>
-              <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
+              <video 
+                ref={remoteVideoRef} 
+                autoPlay 
+                playsInline 
+                muted={false}
+                className="remote-video" 
+              />
               <div>{partnerUsername}</div>
             </div>
             <div>
-              <video ref={localVideoRef} autoPlay muted playsInline className="local-video" />
+              <video 
+                ref={localVideoRef} 
+                autoPlay 
+                muted 
+                playsInline 
+                className="local-video" 
+              />
               <div>{user?.username}</div>
             </div>
             <div className="controls">
