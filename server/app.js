@@ -10,7 +10,15 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: true, credentials: true }
+  cors: { 
+    origin: [
+      'https://michaelstoikos.github.io',
+      'https://chatrouletteexpertlab-production.up.railway.app',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ], 
+    credentials: true 
+  }
 });
 
 const mongoUrl = process.env.MONGODB_URI || 'mongodb://localhost:27017';
@@ -54,7 +62,15 @@ const authenticateUser = (req, res, next) => {
   next();
 };
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ 
+  origin: [
+    'https://michaelstoikos.github.io',
+    'https://chatrouletteexpertlab-production.up.railway.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ], 
+  credentials: true 
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client/chatroulette/dist')));
 
