@@ -127,14 +127,12 @@ function App() {
     localStreamRef.current = stream;
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-    // ✅ Add tracks to peer connection
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
     peerConnectionRef.current = pc;
 
+    // ✅ Add tracks to peer connection
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     pc.onicecandidate = (event) => {
