@@ -29,8 +29,11 @@ function Login({ onLogin }) {
         ? { email: formData.email, password: formData.password }
         : formData;
 
-      // Use environment variable or fallback to localhost for development
-      const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+      // Use Railway URL for production, localhost for development
+      const serverUrl = window.location.hostname === 'michaelstoikos.github.io' 
+        ? 'https://chatrouletteexpertlab-production.up.railway.app'
+        : (import.meta.env.VITE_SERVER_URL || 'http://localhost:3001');
+      
       const response = await fetch(`${serverUrl}${endpoint}`, {
         method: 'POST',
         headers: {
