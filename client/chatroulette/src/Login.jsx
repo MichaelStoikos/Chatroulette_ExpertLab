@@ -29,12 +29,13 @@ function Login({ onLogin }) {
         ? { email: formData.email, password: formData.password }
         : formData;
 
-      // Use Railway URL for production, localhost for development
+      // Use literal URLs - Railway for production, localhost for development
       const serverUrl = window.location.hostname === 'michaelstoikos.github.io' 
         ? 'https://chatrouletteexpertlab-production.up.railway.app'
-        : (import.meta.env.VITE_SERVER_URL || 'http://localhost:3001');
+        : 'http://localhost:3001';
       
-      const response = await fetch(`${serverUrl}${endpoint}`, {
+      const fullUrl = serverUrl + endpoint;
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
