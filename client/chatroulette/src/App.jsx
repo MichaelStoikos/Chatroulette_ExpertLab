@@ -34,11 +34,8 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated || !sessionId) return;
 
-    // Use literal URLs - Railway for production, localhost for development
-    const serverUrl = window.location.hostname === 'michaelstoikos.github.io' 
-      ? 'https://chatrouletteexpertlab-production.up.railway.app'
-      : 'http://localhost:3001';
-    
+    // Use Railway URL directly
+    const serverUrl = 'https://chatrouletteexpertlab-production.up.railway.app';
     const newSocket = io(serverUrl);
     setSocket(newSocket);
 
