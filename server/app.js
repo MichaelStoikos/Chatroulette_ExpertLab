@@ -14,6 +14,7 @@ const io = socketIo(server, {
     origin: [
       'https://michaelstoikos.github.io',
       'https://chatrouletteexpertlab-production.up.railway.app',
+      'https://chatroulette-expert-lab.vercel.app',
       'http://localhost:5173',
       'http://localhost:3000'
     ], 
@@ -66,6 +67,7 @@ app.use(cors({
   origin: [
     'https://michaelstoikos.github.io',
     'https://chatrouletteexpertlab-production.up.railway.app',
+    'https://chatroulette-expert-lab.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000'
   ], 
