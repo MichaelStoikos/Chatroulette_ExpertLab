@@ -103,22 +103,53 @@ function App() {
       await initializeWebRTC(newSocket, data.roomId);
     
       if (data.isCaller) {
-        const offer = await peerConnectionRef.current.createOffer();
-        await peerConnectionRef.current.setLocalDescription(offer);
-        newSocket.emit('offer', { roomId: data.roomId, offer });
+        const pc = peerConnectionRef.current;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+      
+        await new Promise((resolve) => {
+          if (pc.iceGatheringState === 'complete') return resolve();
+          const checkState = () => {
+            if (pc.iceGatheringState === 'complete') {
+              pc.removeEventListener('icegatheringstatechange', checkState);
+              resolve();
+            }
+          };
+          pc.addEventListener('icegatheringstatechange', checkState);
+        });
+      
+        newSocket.emit('offer', { roomId: data.roomId, offer: pc.localDescription });
       }
     });
 
     newSocket.on('offer', async (data) => {
-      // Always initialize media BEFORE setting remote description
       await initializeWebRTC(newSocket, data.roomId);
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
     
-      const answer = await peerConnectionRef.current.createAnswer();
-      await peerConnectionRef.current.setLocalDescription(answer);
+      const pc = peerConnectionRef.current;
     
-      newSocket.emit('answer', { roomId: data.roomId, answer });
+      // Set the remote description from the caller
+      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+    
+      // Create the answer and set as local description
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+    
+      // 🔥 Wait until ICE gathering is complete
+      await new Promise((resolve) => {
+        if (pc.iceGatheringState === 'complete') return resolve();
+        const checkState = () => {
+          if (pc.iceGatheringState === 'complete') {
+            pc.removeEventListener('icegatheringstatechange', checkState);
+            resolve();
+          }
+        };
+        pc.addEventListener('icegatheringstatechange', checkState);
+      });
+    
+      // Send the full answer to the other peer
+      newSocket.emit('answer', { roomId: data.roomId, answer: pc.localDescription });
     });
+    
 
     newSocket.on('answer', async (data) => {
       await peerConnectionRef.current.setRemoteDescription(data.answer);
