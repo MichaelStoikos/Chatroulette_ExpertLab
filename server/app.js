@@ -16,6 +16,7 @@ const io = socketIo(server, {
       'https://chatrouletteexpertlab-production.up.railway.app',
       'https://chatroulette-expert-lab.vercel.app',
       'http://localhost:5173',
+      'http://localhost:5174',
       'http://localhost:3000'
     ], 
     credentials: true 

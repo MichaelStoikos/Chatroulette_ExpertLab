@@ -62,7 +62,12 @@ function App() {
 
     // Use Railway URL directly
     const serverUrl = 'https://chatrouletteexpertlab-production.up.railway.app';
-    const newSocket = io(serverUrl);
+    const newSocket = io(serverUrl, {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
@@ -77,6 +82,23 @@ function App() {
       setIsConnected(false);
       setIsInCall(false);
       setIsSearching(false);
+    });
+
+    // Add connection monitoring
+    newSocket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+    });
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('Reconnected after', attemptNumber, 'attempts');
+      setIsConnected(true);
+      if (sessionId) {
+        newSocket.emit('authenticate', sessionId);
+      }
+    });
+
+    newSocket.on('reconnect_error', (error) => {
+      console.error('Reconnection error:', error);
     });
 
     newSocket.on('authenticated', (data) => {
@@ -214,17 +236,66 @@ function App() {
           remoteVideoRef.current.srcObject = event.streams[0];
           console.log('Remote stream set to video element');
           
-          // Force play the video
-          remoteVideoRef.current.play()
-            .then(() => console.log('Remote video playing successfully'))
-            .catch(e => {
-              console.warn('Autoplay failed for remote video:', e);
-              // Try muted play as fallback
-              remoteVideoRef.current.muted = true;
-              remoteVideoRef.current.play()
-                .then(() => console.log('Remote video playing muted'))
-                .catch(e2 => console.error('Muted play also failed:', e2));
-            });
+          // Use a more robust approach for video playback
+          const playVideo = async () => {
+            try {
+              // First try to play without user interaction
+              await remoteVideoRef.current.play();
+              console.log('Remote video playing successfully');
+            } catch (e) {
+              console.warn('Autoplay failed, trying muted play:', e);
+              try {
+                // Try muted play as fallback
+                remoteVideoRef.current.muted = true;
+                await remoteVideoRef.current.play();
+                console.log('Remote video playing muted');
+                
+                // Try to unmute after a short delay
+                setTimeout(() => {
+                  if (remoteVideoRef.current) {
+                    remoteVideoRef.current.muted = false;
+                  }
+                }, 1000);
+              } catch (e2) {
+                console.error('Muted play also failed:', e2);
+                // Create a clickable overlay to enable video
+                if (remoteVideoRef.current) {
+                  const overlay = document.createElement('div');
+                  overlay.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.7);
+                    color: white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    z-index: 1000;
+                  `;
+                  overlay.textContent = 'Click to enable video';
+                  overlay.onclick = async () => {
+                    try {
+                      await remoteVideoRef.current.play();
+                      overlay.remove();
+                    } catch (e3) {
+                      console.error('Manual play failed:', e3);
+                    }
+                  };
+                  remoteVideoRef.current.parentElement.style.position = 'relative';
+                  remoteVideoRef.current.parentElement.appendChild(overlay);
+                }
+              }
+            }
+          };
+          
+          // Wait for metadata to load before playing
+          remoteVideoRef.current.onloadedmetadata = playVideo;
+          
+          // Also try to play immediately
+          playVideo();
         } else {
           console.error('Remote video element or stream not available');
         }
